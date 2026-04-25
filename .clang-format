@@ -1,0 +1,9 @@
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 100
+SortIncludes: true
+FixNamespaceComments: true
+AlignAfterOpenBracket: Align
+BinPackArguments: false
+BinPackParameters: false
+AllowShortFunctionsOnASingleLine: Inline

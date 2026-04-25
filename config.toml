@@ -1,0 +1,12 @@
+file = "data/FO_SnapshotData26_12_2025.bin"
+mode = "nse"
+
+[logging]
+level = "info"
+file = "market_data.log"
+console = true
+
+[network]
+interface_ip = "127.0.0.1"
+multicast_group = "239.0.0.1"
+port = 12345
