@@ -32,6 +32,6 @@ constexpr int32_t MAX_QTY_LIMIT = 10000000;
 
 #pragma pack(pop)
 
-}  // namespace NseFo
+}
 
 #endif

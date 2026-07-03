@@ -68,4 +68,4 @@ class Histogram {
     }
 };
 
-}  // namespace MarketData
+}

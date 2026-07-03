@@ -63,4 +63,4 @@ void NseFoParser::parseBlock(const char* block) {
     (void)block;
 }
 
-}  // namespace NseFo
+}

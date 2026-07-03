@@ -10,6 +10,9 @@
 #include "ItchParser.hpp"
 #include "Logger.hpp"
 #include "parsers/nse/NseFoParser.hpp"
+#include "parsers/nse/NseL2Parser.hpp"
+#include <fstream>
+#include <iostream>
 
 struct MappedFile {
     char *data = nullptr;
@@ -87,6 +90,29 @@ int main(int argc, char **argv) {
     }
 
     spdlog::info("Processing file: {} in mode: {}", filePath, mode);
+    
+    if (mode == "nse_l2_jsonl") {
+        NseL2::NseL2Parser parser;
+        std::ifstream file(filePath);
+        if (!file.is_open()) {
+            spdlog::error("Failed to open jsonl file: {}", filePath);
+            return 1;
+        }
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        std::string line;
+        int count = 0;
+        while (std::getline(file, line)) {
+            parser.parseJsonLine(line);
+            count++;
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> diff = end - start;
+        
+        spdlog::info("Finished parsing {} lines of NSE L2 JSONL in {} seconds.", count, diff.count());
+        return 0;
+    }
+
     MappedFile file(filePath);
     if (file.data == nullptr) return 1;
     spdlog::info("File size: {} MB", file.size / (static_cast<size_t>(1024 * 1024)));

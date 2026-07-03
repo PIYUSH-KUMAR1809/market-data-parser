@@ -20,4 +20,4 @@ inline T big_to_native(T value) {
     }
 }
 
-}  // namespace MarketData
+}

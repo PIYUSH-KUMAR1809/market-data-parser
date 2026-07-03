@@ -21,6 +21,6 @@ class NseFoParser {
     void parseBlock(const char* block);
 };
 
-}  // namespace NseFo
+}
 
 #endif

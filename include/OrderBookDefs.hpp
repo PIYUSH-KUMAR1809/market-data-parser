@@ -26,4 +26,4 @@ struct PriceLevel {
     uint32_t orderCount = 0;
 };
 
-}  // namespace MarketData
+}

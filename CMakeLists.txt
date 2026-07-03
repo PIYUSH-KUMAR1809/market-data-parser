@@ -4,6 +4,7 @@ project(market_data_parser)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+add_compile_definitions(SPDLOG_USE_STD_FORMAT)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to 'Release' as none was specified.")
@@ -39,7 +40,7 @@ FetchContent_MakeAvailable(googletest)
 FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
-  GIT_TAG v1.13.0
+  GIT_TAG v1.14.1
 )
 FetchContent_MakeAvailable(spdlog)
 
@@ -50,9 +51,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tomlplusplus)
 
-add_library(market_data_lib STATIC src/parsers/nse/NseFoParser.cpp)
+add_library(market_data_lib STATIC 
+    src/parsers/nse/NseFoParser.cpp
+    src/parsers/nse/NseL2Parser.cpp
+    src/minilzo/minilzo.c
+)
 target_include_directories(market_data_lib PUBLIC include)
-target_link_libraries(market_data_lib PUBLIC spdlog::spdlog tomlplusplus::tomlplusplus)
+target_link_libraries(market_data_lib PUBLIC spdlog::spdlog_header_only tomlplusplus::tomlplusplus)
 
 
 add_executable(market_data_parser src/main.cpp src/Config.cpp)

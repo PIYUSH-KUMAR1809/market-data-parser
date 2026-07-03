@@ -315,4 +315,4 @@ class ItchParser {
     static void handleBrokenTrade(const char *ptr) { (void)ptr; }
 };
 
-}  // namespace MarketData
+}

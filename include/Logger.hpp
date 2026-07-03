@@ -44,4 +44,4 @@ class Logger {
     }
 };
 
-}  // namespace MarketData
+}

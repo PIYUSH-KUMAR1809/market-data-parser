@@ -34,4 +34,4 @@ Config Config::load(const std::string& configPath) {
     return config;
 }
 
-}  // namespace MarketData
+}

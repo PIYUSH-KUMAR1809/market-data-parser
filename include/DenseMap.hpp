@@ -137,4 +137,4 @@ class DenseMap {
     size_t slots_used_ = 0;
 };
 
-}  // namespace MarketData
+}

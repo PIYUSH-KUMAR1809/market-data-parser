@@ -49,4 +49,4 @@ class ShardManager {
     std::vector<std::unique_ptr<std::pmr::monotonic_buffer_resource>> buffers_;
 };
 
-}  // namespace MarketData
+}

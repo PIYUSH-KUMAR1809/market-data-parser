@@ -130,4 +130,4 @@ struct StockDirectoryMsg {
 
 #pragma pack(pop)
 
-}  // namespace MarketData
+}
