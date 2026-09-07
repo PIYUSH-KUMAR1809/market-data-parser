@@ -128,6 +128,15 @@ class DenseMap {
     size_t size() const { return size_; }
     size_t capacity() const { return capacity_; }
 
+    template <typename F>
+    void forEach(F&& f) const {
+        for (size_t i = 0; i < capacity_; ++i) {
+            if (meta_[i] == OCCUPIED) {
+                f(entries_[i].first, entries_[i].second);
+            }
+        }
+    }
+
    private:
     PmrVector entries_;
     MetaVector meta_;

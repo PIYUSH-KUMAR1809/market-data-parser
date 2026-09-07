@@ -48,7 +48,7 @@ class OrderBook {
         order.isBuy = isBuy;
         order.price = price;
         order.quantity = quantity;
-        std::copy(symbol, symbol + 8, order.symbol);
+        std::memcpy(order.symbol, symbol, 8);
 
         if (isBuy) {
             PriceLevel& level = bids_[price];
@@ -104,6 +104,12 @@ class OrderBook {
     }
 
     size_t getOrderCount() const { return orderMap_.size(); }
+
+    void mergeFrom(const OrderBook& other) {
+        other.orderMap_.forEach([this](OrderId id, const Order& order) {
+            this->addOrder(id, order.timestamp, order.isBuy, order.price, order.quantity, order.symbol);
+        });
+    }
 
    private:
     DenseMap<OrderId, Order> orderMap_;

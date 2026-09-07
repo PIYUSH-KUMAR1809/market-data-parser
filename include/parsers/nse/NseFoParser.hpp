@@ -16,6 +16,7 @@ class NseFoParser {
     size_t getTotalOrderCount() const { return shardManager.getTotalOrderCount(); }
 
     void parseBuffer(const char* buffer, size_t size);
+    void parseBufferParallel(const char* buffer, size_t size, size_t numThreads = 0);
 
    private:
     void parseBlock(const char* block);

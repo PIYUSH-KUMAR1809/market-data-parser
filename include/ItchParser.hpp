@@ -43,11 +43,16 @@ class ItchParser {
         size_t offset = 0;
 
         while (offset + 2 <= size) {
-            auto t0 = std::chrono::steady_clock::now();
+            bool sample = ((messagesParsed & 1023) == 0);
+            std::chrono::steady_clock::time_point t0;
+            if (sample) {
+                t0 = std::chrono::steady_clock::now();
+            }
+
             uint16_t msgLen = big_to_native<uint16_t>(*(const uint16_t *)(buffer + offset));
             offset += 2;
 
-            if (offset + msgLen > size) {
+            if (__builtin_expect(offset + msgLen > size, 0)) {
                 break;
             }
 
@@ -119,9 +124,11 @@ class ItchParser {
             offset += msgLen;
             messagesParsed++;
 
-            auto t1 = std::chrono::steady_clock::now();
-            uint64_t nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-            latencyHist.record(nanos);
+            if (sample) {
+                auto t1 = std::chrono::steady_clock::now();
+                uint64_t nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
+                latencyHist.record(nanos);
+            }
         }
         totalBytesParsed = offset;
     }
@@ -166,14 +173,14 @@ class ItchParser {
         }
     }
 
-    void checkGap(uint16_t currentTracking) {
-        if (messagesParsed == 0) {
+    inline void checkGap(uint16_t currentTracking) {
+        if (__builtin_expect(messagesParsed == 0, 0)) {
             lastTrackingNumber = currentTracking;
             return;
         }
 
         uint16_t expected = lastTrackingNumber + 1;
-        if (currentTracking != expected) {
+        if (__builtin_expect(currentTracking != expected, 0)) {
             totalGaps++;
         }
         lastTrackingNumber = currentTracking;

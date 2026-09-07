@@ -5,21 +5,21 @@
 
 #include <chrono>
 #include <cstddef>
+#include <fstream>
+#include <iostream>
 
 #include "Config.hpp"
 #include "ItchParser.hpp"
 #include "Logger.hpp"
 #include "parsers/nse/NseFoParser.hpp"
 #include "parsers/nse/NseL2Parser.hpp"
-#include <fstream>
-#include <iostream>
 
 struct MappedFile {
-    char *data = nullptr;
+    char* data = nullptr;
     size_t size = 0;
     int fd = -1;
 
-    MappedFile(const std::string &path) {
+    MappedFile(const std::string& path) {
         fd = open(path.c_str(), O_RDONLY);
         if (fd == -1) {
             spdlog::error("Error opening file: {}", path);
@@ -33,14 +33,19 @@ struct MappedFile {
         }
         size = sb.st_size;
 
-        data = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
+        data = static_cast<char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
         if (data == MAP_FAILED) {
             spdlog::error("mmap failed");
             data = nullptr;
             size = 0;
             close(fd);
             fd = -1;
+            return;
         }
+
+#if defined(MADV_SEQUENTIAL)
+        madvise(data, size, MADV_SEQUENTIAL);
+#endif
     }
 
     ~MappedFile() {
@@ -53,7 +58,7 @@ struct MappedFile {
     }
 };
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     MarketData::Logger::init();
 
     if (argc < 2) {
@@ -65,6 +70,13 @@ int main(int argc, char **argv) {
     std::string mode = "itch";
 
     std::string arg1 = argv[1];
+    struct stat argStat;
+    if (stat(arg1.c_str(), &argStat) != 0 && !arg1.starts_with("data/")) {
+        std::string candidate = "data/" + arg1;
+        if (stat(candidate.c_str(), &argStat) == 0) {
+            arg1 = candidate;
+        }
+    }
     if (arg1.ends_with(".toml")) {
         try {
             auto config = MarketData::Config::load(arg1);
@@ -73,7 +85,7 @@ int main(int argc, char **argv) {
 
             MarketData::Logger::init(config.logging.console, config.logging.file);
             spdlog::info("Loaded config from {}", arg1);
-        } catch (const std::exception &e) {
+        } catch (const std::exception& e) {
             spdlog::error("Error loading config: {}", e.what());
             return 1;
         }
@@ -90,7 +102,7 @@ int main(int argc, char **argv) {
     }
 
     spdlog::info("Processing file: {} in mode: {}", filePath, mode);
-    
+
     if (mode == "nse_l2_jsonl") {
         NseL2::NseL2Parser parser;
         std::ifstream file(filePath);
@@ -98,7 +110,7 @@ int main(int argc, char **argv) {
             spdlog::error("Failed to open jsonl file: {}", filePath);
             return 1;
         }
-        
+
         auto start = std::chrono::high_resolution_clock::now();
         std::string line;
         int count = 0;
@@ -108,8 +120,9 @@ int main(int argc, char **argv) {
         }
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> diff = end - start;
-        
-        spdlog::info("Finished parsing {} lines of NSE L2 JSONL in {} seconds.", count, diff.count());
+
+        spdlog::info(
+            "Finished parsing {} lines of NSE L2 JSONL in {} seconds.", count, diff.count());
         return 0;
     }
 

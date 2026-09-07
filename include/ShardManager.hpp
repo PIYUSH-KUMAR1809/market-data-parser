@@ -11,19 +11,21 @@ namespace MarketData {
 
 class ShardManager {
    public:
-    ShardManager() = default;
+    explicit ShardManager(size_t initialArenaBytes = 32 * 1024 * 1024)
+        : books_(200005, nullptr) {
+        buffers_.emplace_back(std::make_unique<std::pmr::monotonic_buffer_resource>(initialArenaBytes));
+    }
+
+    ShardManager(ShardManager&&) noexcept = default;
+    ShardManager& operator=(ShardManager&&) noexcept = default;
 
     OrderBook* getBook(size_t symbolId) {
-        if (symbolId >= books_.size()) {
-            size_t newSize = symbolId + 1024;
-            books_.resize(newSize, nullptr);
+        if (__builtin_expect(symbolId >= books_.size(), 0)) {
+            books_.resize(symbolId + 1024, nullptr);
         }
 
-        if (books_[symbolId] == nullptr) {
-            auto buffer = new std::pmr::monotonic_buffer_resource(static_cast<size_t>(1024 * 1024));
-            buffers_.emplace_back(buffer);
-
-            books_[symbolId] = new OrderBook(buffer);
+        if (__builtin_expect(books_[symbolId] == nullptr, 0)) {
+            books_[symbolId] = new OrderBook(buffers_.front().get());
         }
         return books_[symbolId];
     }
@@ -36,6 +38,26 @@ class ShardManager {
             }
         }
         return total;
+    }
+
+    void mergeFrom(ShardManager& other) {
+        if (other.books_.size() > books_.size()) {
+            books_.resize(other.books_.size(), nullptr);
+        }
+        for (size_t i = 0; i < other.books_.size(); ++i) {
+            if (other.books_[i] != nullptr) {
+                if (books_[i] == nullptr) {
+                    books_[i] = other.books_[i];
+                    other.books_[i] = nullptr;
+                } else {
+                    books_[i]->mergeFrom(*other.books_[i]);
+                }
+            }
+        }
+        for (auto& buf : other.buffers_) {
+            buffers_.emplace_back(std::move(buf));
+        }
+        other.buffers_.clear();
     }
 
     ~ShardManager() {
