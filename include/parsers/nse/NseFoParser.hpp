@@ -2,6 +2,8 @@
 #define NSE_FO_PARSER_HPP
 
 #include <cstddef>
+#include <memory>
+#include <vector>
 
 #include "ShardManager.hpp"
 
@@ -9,9 +11,10 @@ namespace NseFo {
 
 class NseFoParser {
    public:
-    NseFoParser() = default;
+    NseFoParser();
 
     MarketData::ShardManager shardManager;
+    uint64_t                 msgCount = 0;
 
     size_t getTotalOrderCount() const { return shardManager.getTotalOrderCount(); }
 
@@ -20,6 +23,8 @@ class NseFoParser {
 
    private:
     void parseBlock(const char* block);
+
+    static constexpr size_t kPreallocateBooks = 200005;
 };
 
 }

@@ -52,6 +52,19 @@ class Histogram {
         }
     }
 
+    void mergeFrom(const Histogram& other) {
+        overflow += other.overflow;
+        count += other.count;
+        sum += other.sum;
+        if (other.count == 0) return;
+        if (other.min_ < min_) min_ = other.min_;
+        if (other.max_ > max_) max_ = other.max_;
+        const size_t n = buckets.size() < other.buckets.size() ? buckets.size() : other.buckets.size();
+        for (size_t i = 0; i < n; ++i) {
+            buckets[i] += other.buckets[i];
+        }
+    }
+
    private:
     uint64_t getPercentile(double p) const {
         if (count == 0) return 0;

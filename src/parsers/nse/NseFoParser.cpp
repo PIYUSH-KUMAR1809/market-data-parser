@@ -6,7 +6,6 @@
 
 #include "Endian.hpp"
 #include "parsers/nse/NseFoProtocol.hpp"
-#include "spdlog/spdlog.h"
 
 namespace NseFo {
 
@@ -41,7 +40,6 @@ void scanChunk(const char* buffer,
     constexpr size_t recordSize = sizeof(SnapshotRecord);
 
     while (offset + recordSize <= endOffset) {
-        // Fast skip of contiguous zero blocks (4 records = 80 bytes)
         while (offset + 80 <= endOffset &&
                *reinterpret_cast<const uint32_t*>(buffer + offset) == 0 &&
                *reinterpret_cast<const uint32_t*>(buffer + offset + 20) == 0 &&
@@ -82,7 +80,23 @@ void scanChunk(const char* buffer,
     }
 }
 
-}  // namespace
+void applyOrders(MarketData::ShardManager& shardManager,
+                 uint64_t& msgCount,
+                 const std::vector<RawOrder>& orders) {
+    char symbolBuf[8];
+    for (const auto& ord : orders) {
+        auto* book = shardManager.getBook(static_cast<size_t>(ord.token));
+        ++msgCount;
+        fastFormatToken(ord.token, symbolBuf);
+        book->addOrder(msgCount, true, ord.price, static_cast<uint32_t>(ord.quantity), symbolBuf);
+    }
+}
+
+}
+
+NseFoParser::NseFoParser()
+    : shardManager(32 * 1024 * 1024, kPreallocateBooks) {
+}
 
 void NseFoParser::parseBufferParallel(const char* buffer, size_t size, size_t numThreads) {
     constexpr size_t recordSize = sizeof(SnapshotRecord);
@@ -99,16 +113,7 @@ void NseFoParser::parseBufferParallel(const char* buffer, size_t size, size_t nu
         std::vector<RawOrder> orders;
         orders.reserve(1024);
         scanChunk(buffer, 0, size, orders);
-        uint64_t msgCount = 0;
-        char symbolBuf[8];
-        for (const auto& ord : orders) {
-            auto* book = shardManager.getBook(ord.token);
-            if (book) {
-                msgCount++;
-                fastFormatToken(ord.token, symbolBuf);
-                book->addOrder(msgCount, 0, true, ord.price, ord.quantity, symbolBuf);
-            }
-        }
+        applyOrders(shardManager, msgCount, orders);
         return;
     }
 
@@ -122,48 +127,23 @@ void NseFoParser::parseBufferParallel(const char* buffer, size_t size, size_t nu
 
     size_t recordsPerThread = totalRecords / numThreads;
 
-    auto t0 = std::chrono::high_resolution_clock::now();
-
     for (size_t i = 0; i < numThreads; ++i) {
         size_t startRec = i * recordsPerThread;
         size_t endRec = (i == numThreads - 1) ? totalRecords : (i + 1) * recordsPerThread;
-
         size_t startOffset = startRec * recordSize;
         size_t endOffset = endRec * recordSize;
-
         workers.emplace_back([buffer, startOffset, endOffset, &threadOrders, i]() {
             scanChunk(buffer, startOffset, endOffset, threadOrders[i]);
         });
     }
 
     for (auto& w : workers) {
-        if (w.joinable()) {
-            w.join();
-        }
+        if (w.joinable()) w.join();
     }
 
-    auto t1 = std::chrono::high_resolution_clock::now();
-
-    // Populate order books sequentially to preserve exact message sequence numbers
-    uint64_t msgCount = 0;
-    char symbolBuf[8];
     for (size_t i = 0; i < numThreads; ++i) {
-        for (const auto& ord : threadOrders[i]) {
-            auto* book = shardManager.getBook(ord.token);
-            if (book) {
-                msgCount++;
-                fastFormatToken(ord.token, symbolBuf);
-                book->addOrder(msgCount, 0, true, ord.price, ord.quantity, symbolBuf);
-            }
-        }
+        applyOrders(shardManager, msgCount, threadOrders[i]);
     }
-
-    auto t2 = std::chrono::high_resolution_clock::now();
-
-    spdlog::debug("Parallel parse ({} threads): Scan = {:.3f}s, Book Population = {:.3f}s",
-                  numThreads,
-                  std::chrono::duration<double>(t1 - t0).count(),
-                  std::chrono::duration<double>(t2 - t1).count());
 }
 
 void NseFoParser::parseBuffer(const char* buffer, size_t size) {
@@ -171,17 +151,9 @@ void NseFoParser::parseBuffer(const char* buffer, size_t size) {
         parseBufferParallel(buffer, size);
     } else {
         std::vector<RawOrder> orders;
+        orders.reserve(1024);
         scanChunk(buffer, 0, size, orders);
-        uint64_t msgCount = 0;
-        char symbolBuf[8];
-        for (const auto& ord : orders) {
-            auto* book = shardManager.getBook(ord.token);
-            if (book) {
-                msgCount++;
-                fastFormatToken(ord.token, symbolBuf);
-                book->addOrder(msgCount, 0, true, ord.price, ord.quantity, symbolBuf);
-            }
-        }
+        applyOrders(shardManager, msgCount, orders);
     }
 }
 
@@ -189,4 +161,4 @@ void NseFoParser::parseBlock(const char* block) {
     (void)block;
 }
 
-}  // namespace NseFo
+}

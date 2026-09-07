@@ -113,7 +113,7 @@ static void BM_OrderBook_Add(benchmark::State& state) {
 
     for (auto _ : state) {
         for (size_t i = 0; i < N; ++i) {
-            book.addOrder(++id, 1000, true, prices[i], 100, "TEST");
+            book.addOrder(++id, true, prices[i], 100, "TEST    ");
         }
     }
 
@@ -128,7 +128,7 @@ static void BM_OrderBook_ExactMatch(benchmark::State& state) {
         MarketData::OrderBook book;
         uint64_t id = 0;
         for (size_t i = 0; i < N; ++i) {
-            book.addOrder(++id, 1000, true, 10000, 100, "TEST");
+            book.addOrder(++id, true, 10000, 100, "TEST    ");
         }
         state.ResumeTiming();
 
