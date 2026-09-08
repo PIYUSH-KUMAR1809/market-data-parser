@@ -1,6 +1,8 @@
 #pragma once
 
 #include <bit>
+#include <cstdint>
+#include <cstring>
 
 namespace MarketData {
 
@@ -19,5 +21,16 @@ inline T big_to_native(T value) {
             return value;
     }
 }
+
+template <typename T>
+inline T load_be(const void* p) {
+    T v{};
+    std::memcpy(&v, p, sizeof(T));
+    return big_to_native(v);
+}
+
+inline uint16_t load_be16(const void* p) { return load_be<uint16_t>(p); }
+inline uint32_t load_be32(const void* p) { return load_be<uint32_t>(p); }
+inline uint64_t load_be64(const void* p) { return load_be<uint64_t>(p); }
 
 }

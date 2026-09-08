@@ -46,8 +46,7 @@ class ItchParser {
         const bool filtered = (filterMinLocate_ != 0 || filterMaxLocate_ != 65535);
 
         while (offset + 2 <= size) {
-            const uint16_t msgLen =
-                big_to_native<uint16_t>(*reinterpret_cast<const uint16_t*>(buffer + offset));
+            const uint16_t msgLen = load_be16(buffer + offset);
             offset += 2;
             if (__builtin_expect(offset + msgLen > size, 0)) {
                 break;
@@ -59,7 +58,7 @@ class ItchParser {
             if (filtered) {
                 uint16_t locate = 0;
                 if (msgLen >= 3) {
-                    locate = big_to_native<uint16_t>(*reinterpret_cast<const uint16_t*>(msgPtr + 1));
+                    locate = load_be16(msgPtr + 1);
                 }
                 if (locate < filterMinLocate_ || locate > filterMaxLocate_) {
                     offset += msgLen;
@@ -141,52 +140,40 @@ class ItchParser {
     }
 
     void handleAddOrder(const char* ptr) {
-        const auto* msg = reinterpret_cast<const AddOrderMsg*>(ptr);
-        book_.addOrder(big_to_native(msg->orderReferenceNumber),
-                       msg->buySellIndicator == 'B',
-                       big_to_native(msg->price),
-                       big_to_native(msg->shares),
-                       msg->stock);
+        book_.addOrder(load_be64(ptr + 11),
+                       ptr[19] == 'B',
+                       load_be32(ptr + 32),
+                       load_be32(ptr + 20),
+                       ptr + 24);
     }
 
     void handleAddOrderMPID(const char* ptr) {
-        const auto* msg = reinterpret_cast<const AddOrderMPIDMsg*>(ptr);
-        book_.addOrder(big_to_native(msg->orderReferenceNumber),
-                       msg->buySellIndicator == 'B',
-                       big_to_native(msg->price),
-                       big_to_native(msg->shares),
-                       msg->stock);
+        book_.addOrder(load_be64(ptr + 11),
+                       ptr[19] == 'B',
+                       load_be32(ptr + 32),
+                       load_be32(ptr + 20),
+                       ptr + 24);
     }
 
     void handleOrderExecuted(const char* ptr) {
-        const auto* msg = reinterpret_cast<const OrderExecutedMsg*>(ptr);
-        book_.executeOrder(big_to_native(msg->orderReferenceNumber),
-                           big_to_native(msg->executedShares));
+        book_.executeOrder(load_be64(ptr + 11), load_be32(ptr + 19));
     }
 
     void handleOrderExecutedWithPrice(const char* ptr) {
-        const auto* msg = reinterpret_cast<const OrderExecutedWithPriceMsg*>(ptr);
-        book_.executeOrder(big_to_native(msg->orderReferenceNumber),
-                           big_to_native(msg->executedShares));
+        book_.executeOrder(load_be64(ptr + 11), load_be32(ptr + 19));
     }
 
-    void handleOrderDelete(const char* ptr) {
-        const auto* msg = reinterpret_cast<const OrderDeleteMsg*>(ptr);
-        book_.deleteOrder(big_to_native(msg->orderReferenceNumber));
-    }
+    void handleOrderDelete(const char* ptr) { book_.deleteOrder(load_be64(ptr + 11)); }
 
     void handleOrderReplace(const char* ptr) {
-        const auto* msg = reinterpret_cast<const OrderReplaceMsg*>(ptr);
-        book_.replaceOrder(big_to_native(msg->originalOrderReferenceNumber),
-                           big_to_native(msg->newOrderReferenceNumber),
-                           big_to_native(msg->price),
-                           big_to_native(msg->shares));
+        book_.replaceOrder(load_be64(ptr + 11),
+                           load_be64(ptr + 19),
+                           load_be32(ptr + 31),
+                           load_be32(ptr + 27));
     }
 
     void handleOrderCancel(const char* ptr) {
-        const auto* msg = reinterpret_cast<const OrderCancelMsg*>(ptr);
-        book_.cancelOrder(big_to_native(msg->orderReferenceNumber),
-                          big_to_native(msg->canceledShares));
+        book_.cancelOrder(load_be64(ptr + 11), load_be32(ptr + 19));
     }
 };
 
