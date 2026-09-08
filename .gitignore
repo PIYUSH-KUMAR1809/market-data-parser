@@ -25,3 +25,8 @@ data/
 
 # Logs
 *.log
+
+# Local agents
+/AGENTS.md
+plan/
+.cursor/

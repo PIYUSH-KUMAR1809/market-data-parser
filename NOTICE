@@ -1,0 +1,24 @@
+market_data_parser
+Copyright (c) 2026 Piyush Kumar
+
+This project is licensed under the MIT License (see LICENSE) except for
+the miniLZO sources, which are not MIT.
+
+miniLZO (src/minilzo/, include/minilzo/)
+Copyright (C) 1996-2017 Markus Franz Xaver Johannes Oberhumer
+Licensed under the GNU General Public License, version 2 or later.
+See COPYING.minilzo.
+
+miniLZO is NOT compiled into the default library. Enable it only if you
+accept GPL-2+:
+
+    cmake -B build -S . -DENABLE_NSE_L2_LZO=ON
+
+When ENABLE_NSE_L2_LZO=ON, the resulting library/binary that links
+miniLZO is a GPL combined work.
+
+Third-party FetchContent dependencies (not vendored in git):
+- spdlog (MIT)
+- toml++ (MIT)
+- GoogleTest (BSD-3-Clause)
+- Google Benchmark (Apache-2.0)

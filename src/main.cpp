@@ -15,7 +15,9 @@
 #include "Logger.hpp"
 #include "parsers/nse/NseFoParser.hpp"
 #include "parsers/nse/NseFoProtocol.hpp"
+#ifdef MARKET_DATA_HAS_NSEL2_LZO
 #include "parsers/nse/NseL2Parser.hpp"
+#endif
 
 struct MappedFile {
     char*  data = nullptr;
@@ -107,7 +109,7 @@ int main(int argc, char** argv) {
     MarketData::Logger::init();
 
     if (argc < 2) {
-        spdlog::error("Usage: {} <file> [mode: itch|nse]", argv[0]);
+        spdlog::error("Usage: {} <file> [mode: itch|nse|nse_l2_jsonl]", argv[0]);
         return 1;
     }
 
@@ -149,6 +151,12 @@ int main(int argc, char** argv) {
     spdlog::info("Processing file: {} in mode: {}", filePath, mode);
 
     if (mode == "nse_l2_jsonl") {
+#ifndef MARKET_DATA_HAS_NSEL2_LZO
+        spdlog::error(
+            "NSE L2 support is disabled. Rebuild with -DENABLE_NSE_L2_LZO=ON "
+            "(links miniLZO; the binary becomes a GPL-2+ combined work).");
+        return 1;
+#else
         NseL2::NseL2Parser parser;
         std::ifstream      file(filePath);
         if (!file.is_open()) {
@@ -168,6 +176,7 @@ int main(int argc, char** argv) {
 
         spdlog::info("Finished parsing {} lines of NSE L2 JSONL in {} seconds.", count, diff.count());
         return 0;
+#endif
     }
 
     if (mode == "nse") {
