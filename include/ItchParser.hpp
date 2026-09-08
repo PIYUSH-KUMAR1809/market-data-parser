@@ -7,23 +7,19 @@
 #include "Endian.hpp"
 #include "ItchMessages.hpp"
 #include "OrderBook.hpp"
-#include "ShardManager.hpp"
 #include "spdlog/spdlog.h"
 
 namespace MarketData {
 
 class ItchParser {
    public:
-    static constexpr size_t kLocateCount = 65536;
-
-    ItchParser() : shardManager(32 * 1024 * 1024, kLocateCount) {}
+    ItchParser() { book_.reserveOrders(1 << 21); }
 
     size_t messagesParsed = 0;
     size_t totalBytesParsed = 0;
     size_t unhandledMessages = 0;
 
     std::array<size_t, 256> msgCounts{};
-    ShardManager shardManager;
 
     uint16_t filterMinLocate_ = 0;
     uint16_t filterMaxLocate_ = 65535;
@@ -33,7 +29,7 @@ class ItchParser {
         filterMaxLocate_ = maxLocate;
     }
 
-    size_t getTotalOrderCount() const { return shardManager.getTotalOrderCount(); }
+    size_t getTotalOrderCount() const { return book_.getOrderCount(); }
 
     bool verifyComplete(size_t fileSize) const {
         if (totalBytesParsed != fileSize) {
@@ -88,7 +84,7 @@ class ItchParser {
         for (size_t i = 0; i < 256; ++i) {
             msgCounts[i] += other.msgCounts[i];
         }
-        shardManager.mergeFrom(other.shardManager);
+        book_.mergeFrom(other.book_);
     }
 
     void printStats() const {
@@ -111,11 +107,7 @@ class ItchParser {
     bool printDebug = false;
 
    private:
-    inline OrderBook* getBook(const char* ptr) {
-        const uint16_t stockLocate =
-            big_to_native<uint16_t>(*reinterpret_cast<const uint16_t*>(ptr + 1));
-        return shardManager.getBook(stockLocate);
-    }
+    OrderBook book_;
 
     inline void dispatch(uint8_t msgType, const char* ptr) {
         switch (msgType) {
@@ -150,51 +142,51 @@ class ItchParser {
 
     void handleAddOrder(const char* ptr) {
         const auto* msg = reinterpret_cast<const AddOrderMsg*>(ptr);
-        getBook(ptr)->addOrder(big_to_native(msg->orderReferenceNumber),
-                               msg->buySellIndicator == 'B',
-                               big_to_native(msg->price),
-                               big_to_native(msg->shares),
-                               msg->stock);
+        book_.addOrder(big_to_native(msg->orderReferenceNumber),
+                       msg->buySellIndicator == 'B',
+                       big_to_native(msg->price),
+                       big_to_native(msg->shares),
+                       msg->stock);
     }
 
     void handleAddOrderMPID(const char* ptr) {
         const auto* msg = reinterpret_cast<const AddOrderMPIDMsg*>(ptr);
-        getBook(ptr)->addOrder(big_to_native(msg->orderReferenceNumber),
-                               msg->buySellIndicator == 'B',
-                               big_to_native(msg->price),
-                               big_to_native(msg->shares),
-                               msg->stock);
+        book_.addOrder(big_to_native(msg->orderReferenceNumber),
+                       msg->buySellIndicator == 'B',
+                       big_to_native(msg->price),
+                       big_to_native(msg->shares),
+                       msg->stock);
     }
 
     void handleOrderExecuted(const char* ptr) {
         const auto* msg = reinterpret_cast<const OrderExecutedMsg*>(ptr);
-        getBook(ptr)->executeOrder(big_to_native(msg->orderReferenceNumber),
-                                   big_to_native(msg->executedShares));
+        book_.executeOrder(big_to_native(msg->orderReferenceNumber),
+                           big_to_native(msg->executedShares));
     }
 
     void handleOrderExecutedWithPrice(const char* ptr) {
         const auto* msg = reinterpret_cast<const OrderExecutedWithPriceMsg*>(ptr);
-        getBook(ptr)->executeOrder(big_to_native(msg->orderReferenceNumber),
-                                   big_to_native(msg->executedShares));
+        book_.executeOrder(big_to_native(msg->orderReferenceNumber),
+                           big_to_native(msg->executedShares));
     }
 
     void handleOrderDelete(const char* ptr) {
         const auto* msg = reinterpret_cast<const OrderDeleteMsg*>(ptr);
-        getBook(ptr)->deleteOrder(big_to_native(msg->orderReferenceNumber));
+        book_.deleteOrder(big_to_native(msg->orderReferenceNumber));
     }
 
     void handleOrderReplace(const char* ptr) {
         const auto* msg = reinterpret_cast<const OrderReplaceMsg*>(ptr);
-        getBook(ptr)->replaceOrder(big_to_native(msg->originalOrderReferenceNumber),
-                                   big_to_native(msg->newOrderReferenceNumber),
-                                   big_to_native(msg->price),
-                                   big_to_native(msg->shares));
+        book_.replaceOrder(big_to_native(msg->originalOrderReferenceNumber),
+                           big_to_native(msg->newOrderReferenceNumber),
+                           big_to_native(msg->price),
+                           big_to_native(msg->shares));
     }
 
     void handleOrderCancel(const char* ptr) {
         const auto* msg = reinterpret_cast<const OrderCancelMsg*>(ptr);
-        getBook(ptr)->cancelOrder(big_to_native(msg->orderReferenceNumber),
-                                  big_to_native(msg->canceledShares));
+        book_.cancelOrder(big_to_native(msg->orderReferenceNumber),
+                          big_to_native(msg->canceledShares));
     }
 };
 

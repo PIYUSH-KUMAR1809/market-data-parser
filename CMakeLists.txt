@@ -78,6 +78,7 @@ add_executable(unit_tests
     tests/OrderBookTest.cpp
     tests/NseParserTest.cpp
     tests/ItchParserTest.cpp
+    tests/DenseMapTest.cpp
 )
 target_link_libraries(unit_tests PRIVATE market_data_lib gtest_main)
 

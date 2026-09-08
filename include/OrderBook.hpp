@@ -16,15 +16,12 @@ class OrderBook {
     void reserveOrders(size_t n) { orderMap_.reserve(n); }
 
     void addOrder(OrderId id, bool isBuy, Price price, Quantity quantity, const char* symbol) {
-        const size_t before = orderMap_.size();
-        Order& order = orderMap_.emplace(id);
-        if (orderMap_.size() == before) {
-            return;
-        }
-        order.isBuy    = isBuy;
-        order.price    = price;
-        order.quantity = quantity;
-        std::memcpy(order.symbol, symbol, 8);
+        auto [order, inserted] = orderMap_.try_emplace(id);
+        if (!inserted) return;
+        order->isBuy    = isBuy;
+        order->price    = price;
+        order->quantity = quantity;
+        std::memcpy(order->symbol, symbol, 8);
     }
 
     void executeOrder(OrderId id, Quantity executedQty) {
